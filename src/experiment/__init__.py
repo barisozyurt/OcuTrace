@@ -7,6 +7,7 @@ from src.experiment.stimulus import (
     compute_trial_frame_counts,
     run_single_trial,
 )
+from src.experiment.session import GazeCollector, analyze_trial, print_session_summary
 
 __all__ = [
     "TrialSpec",
@@ -16,4 +17,7 @@ __all__ = [
     "create_stimulus_config",
     "compute_trial_frame_counts",
     "run_single_trial",
+    "GazeCollector",
+    "analyze_trial",
+    "print_session_summary",
 ]
