@@ -1,0 +1,23 @@
+# Core
+mediapipe>=0.10.14
+opencv-python>=4.9.0
+numpy>=1.26.0
+PyYAML>=6.0.1
+
+# Experiment
+psychopy>=2024.1.0
+
+# Analysis
+scipy>=1.12.0
+pandas>=2.2.0
+
+# Visualization
+matplotlib>=3.8.0
+plotly>=5.18.0
+
+# Storage
+# sqlite3 is stdlib — no extra dep needed
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=4.1.0

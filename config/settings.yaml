@@ -1,0 +1,54 @@
+# OcuTrace Configuration
+# All configurable values live here — no hardcoded values in code.
+
+camera:
+  device_index: 0
+  frame_width: 640
+  frame_height: 480
+  target_fps: 30
+
+tracking:
+  # MediaPipe FaceMesh
+  max_num_faces: 1
+  refine_landmarks: true
+  min_detection_confidence: 0.5
+  min_tracking_confidence: 0.5
+  # Iris landmark indices
+  left_iris_index: 468
+  right_iris_index: 473
+
+glasses_detection:
+  # Quality gate thresholds
+  jitter_threshold_px: 2.0
+  min_detection_rate: 0.95
+  quality_window_frames: 90  # 3 seconds at 30fps
+
+storage:
+  backend: sqlite
+  sqlite:
+    database_path: data/ocutrace.db
+
+saccade_detection:
+  # Savitzky-Golay filter
+  smoothing_window: 5
+  smoothing_polyorder: 2
+  # Velocity thresholds (degrees/second)
+  onset_velocity_threshold: 30.0
+  offset_velocity_threshold: 20.0
+  min_onset_frames: 3
+
+paradigm:
+  # Gap antisaccade protocol
+  fixation_duration_ms: 1000
+  gap_duration_ms: 200
+  stimulus_duration_ms: 1500
+  iti_min_ms: 1000
+  iti_max_ms: 1500
+  stimulus_eccentricity_deg: 10.0
+  n_antisaccade_trials: 40
+  n_prosaccade_trials: 20
+
+calibration:
+  n_points: 9
+  point_duration_ms: 2000
+  max_acceptable_error_deg: 2.0
