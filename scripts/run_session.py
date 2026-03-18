@@ -183,6 +183,17 @@ def main() -> None:
     win.flip()
     event.waitKeys(keyList=["space"])
 
+    # --- Countdown before first trial ---
+    countdown_text = visual.TextStim(win, color="white", height=2.0)
+    for sec in range(3, 0, -1):
+        countdown_text.text = str(sec)
+        countdown_text.draw()
+        win.flip()
+        core.wait(1.0, hogCPUperiod=0)
+    # Brief blank before first trial
+    win.flip()
+    core.wait(0.5, hogCPUperiod=0)
+
     # --- Start gaze collector ---
     collector = GazeCollector(tracker, cap, session.session_id)
     collector.start()

@@ -58,6 +58,7 @@ class GazeCollector:
         self._samples: list[GazeData] = []
         self._lock = threading.Lock()
         self._latest_coords: Optional[IrisCoordinates] = None
+        self._last_recorded_ts: float = -1.0  # deduplicate webcam frames
         self._running = False
         self._thread: Optional[threading.Thread] = None
 
@@ -94,19 +95,24 @@ class GazeCollector:
         """
         with self._lock:
             coords = self._latest_coords
-        if coords is not None:
-            self._samples.append(
-                GazeData(
-                    session_id=self._session_id,
-                    trial_number=self._trial_number,
-                    timestamp_ms=timestamp_ms,  # Use PsychoPy clock, not camera clock
-                    left_iris_x=coords.left_x,
-                    left_iris_y=coords.left_y,
-                    right_iris_x=coords.right_x,
-                    right_iris_y=coords.right_y,
-                    confidence=coords.confidence,
-                )
+        if coords is None:
+            return
+        # Skip duplicate webcam frames (webcam ~30fps, PsychoPy ~60fps)
+        if coords.timestamp_ms == self._last_recorded_ts:
+            return
+        self._last_recorded_ts = coords.timestamp_ms
+        self._samples.append(
+            GazeData(
+                session_id=self._session_id,
+                trial_number=self._trial_number,
+                timestamp_ms=timestamp_ms,  # PsychoPy clock for sync
+                left_iris_x=coords.left_x,
+                left_iris_y=coords.left_y,
+                right_iris_x=coords.right_x,
+                right_iris_y=coords.right_y,
+                confidence=coords.confidence,
             )
+        )
 
     def get_trial_samples(self, trial_number: int) -> list[GazeData]:
         """Get collected samples for a specific trial."""
