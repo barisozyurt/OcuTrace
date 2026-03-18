@@ -176,14 +176,15 @@ def main() -> None:
     instruction = visual.TextStim(
         win,
         text=(
-            "Antisaccade experiment\n\n"
-            "Look at the center cross.\n"
-            "When a dot appears on one side,\n"
-            "look at the OPPOSITE side.\n\n"
+            "Saccade / Antisaccade Experiment\n\n"
+            "Always look at the center cross first.\n"
+            "The cross color tells you what to do:\n\n"
+            "RED cross  =  look OPPOSITE to the dot\n"
+            "GREEN cross  =  look TOWARD the dot\n\n"
             "Press SPACE to begin."
         ),
         color="white",
-        height=1.0,
+        height=0.9,
     )
     instruction.draw()
     win.flip()
@@ -216,17 +217,33 @@ def main() -> None:
 
     print("-" * 60)
 
+    # Create colored fixation crosses for trial type cues
+    from psychopy import visual as vis
+
+    fixation_anti = create_fixation_cross(win)
+    fixation_anti.lineColor = "red"
+    fixation_anti.fillColor = "red"
+
+    fixation_pro = create_fixation_cross(win)
+    fixation_pro.lineColor = "green"
+    fixation_pro.fillColor = "green"
+
     try:
         for trial_spec in trials:
             collector.set_trial(trial_spec.trial_number)
 
+            # Select fixation cross color based on trial type
+            if trial_spec.trial_type == "antisaccade":
+                trial_fixation = fixation_anti
+            else:
+                trial_fixation = fixation_pro
+
             # Update on-screen trial counter
-            remaining = len(trials) - trial_spec.trial_number + 1
             trial_counter_text.text = f"{trial_spec.trial_number}/{len(trials)}"
 
             # Brief on-screen counter flash before fixation
             trial_counter_text.draw()
-            fixation.draw()
+            trial_fixation.draw()
             win.flip()
             core.wait(0.3, hogCPUperiod=0)
 
@@ -234,7 +251,7 @@ def main() -> None:
             timestamps = run_single_trial(
                 win=win,
                 clock=clock,
-                fixation=fixation,
+                fixation=trial_fixation,
                 side=trial_spec.stimulus_side,
                 config=stim_config,
                 rng=rng,
