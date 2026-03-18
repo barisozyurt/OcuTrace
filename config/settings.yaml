@@ -8,10 +8,11 @@ camera:
   target_fps: 30
 
 tracking:
-  # MediaPipe FaceMesh
+  # MediaPipe FaceLandmarker
+  model_path: models/face_landmarker.task
   max_num_faces: 1
-  refine_landmarks: true
   min_detection_confidence: 0.5
+  min_presence_confidence: 0.5
   min_tracking_confidence: 0.5
   # Iris landmark indices
   left_iris_index: 468

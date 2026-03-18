@@ -1,8 +1,8 @@
 """Tests for iris tracker.
 
-Uses mock for MediaPipe to avoid camera dependency in CI.
+Uses mock for MediaPipe to avoid camera dependency and model file in CI.
 """
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 import numpy as np
 import pytest
@@ -41,6 +41,7 @@ class TestIrisCoordinates:
 
 
 def _make_mock_landmark(x: float, y: float):
+    """Create a mock landmark with x, y attributes."""
     lm = MagicMock()
     lm.x = x
     lm.y = y
@@ -48,34 +49,36 @@ def _make_mock_landmark(x: float, y: float):
     return lm
 
 
-def _make_mock_results(left_x, left_y, right_x, right_y, num_landmarks=478):
-    landmarks = [MagicMock() for _ in range(num_landmarks)]
+def _make_mock_result_with_face(left_x, left_y, right_x, right_y, num_landmarks=478):
+    """Create mock FaceLandmarkerResult with landmarks."""
+    landmarks = [_make_mock_landmark(0.5, 0.5) for _ in range(num_landmarks)]
     landmarks[468] = _make_mock_landmark(left_x, left_y)
     landmarks[473] = _make_mock_landmark(right_x, right_y)
-    face = MagicMock()
-    face.landmark = landmarks
-    results = MagicMock()
-    results.multi_face_landmarks = [face]
-    return results
+
+    result = MagicMock()
+    result.face_landmarks = [landmarks]
+    return result
 
 
-def _make_mock_results_no_face():
-    results = MagicMock()
-    results.multi_face_landmarks = None
-    return results
+def _make_mock_result_no_face():
+    """Create mock FaceLandmarkerResult with no face."""
+    result = MagicMock()
+    result.face_landmarks = []
+    return result
 
 
 class TestIrisTracker:
     def test_process_frame_returns_coordinates(self):
         tracker = IrisTracker.__new__(IrisTracker)
-        tracker._face_mesh = MagicMock()
+        tracker._landmarker = MagicMock()
         tracker._frame_width = 640
         tracker._frame_height = 480
         tracker._left_iris_idx = 468
         tracker._right_iris_idx = 473
+        tracker._frame_counter = 0
 
-        mock_results = _make_mock_results(0.5, 0.5, 0.502, 0.501)
-        tracker._face_mesh.process.return_value = mock_results
+        mock_result = _make_mock_result_with_face(0.5, 0.5, 0.502, 0.501)
+        tracker._landmarker.detect_for_video.return_value = mock_result
 
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
         coords = tracker.process_frame(frame, timestamp_ms=100.0)
@@ -87,13 +90,14 @@ class TestIrisTracker:
 
     def test_process_frame_no_face_returns_none(self):
         tracker = IrisTracker.__new__(IrisTracker)
-        tracker._face_mesh = MagicMock()
+        tracker._landmarker = MagicMock()
         tracker._frame_width = 640
         tracker._frame_height = 480
         tracker._left_iris_idx = 468
         tracker._right_iris_idx = 473
+        tracker._frame_counter = 0
 
-        tracker._face_mesh.process.return_value = _make_mock_results_no_face()
+        tracker._landmarker.detect_for_video.return_value = _make_mock_result_no_face()
 
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
         coords = tracker.process_frame(frame, timestamp_ms=100.0)
@@ -108,14 +112,16 @@ class TestIrisTracker:
                 "min_tracking_confidence": 0.5,
                 "left_iris_index": 468,
                 "right_iris_index": 473,
+                "model_path": "models/face_landmarker.task",
             },
             "camera": {
                 "frame_width": 640,
                 "frame_height": 480,
             },
         }
-        with patch("src.tracking.iris_tracker.mp") as mock_mp:
-            mock_mp.solutions.face_mesh.FaceMesh.return_value = MagicMock()
+        with patch("src.tracking.iris_tracker.FaceLandmarker") as mock_fl:
+            mock_fl.create_from_options.return_value = MagicMock()
             tracker = IrisTracker(config)
             assert tracker._left_iris_idx == 468
             assert tracker._right_iris_idx == 473
+            mock_fl.create_from_options.assert_called_once()

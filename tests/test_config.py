@@ -11,7 +11,7 @@ class TestLoadConfig:
     def test_load_default_config(self):
         config = load_config()
         assert config["camera"]["device_index"] == 0
-        assert config["tracking"]["refine_landmarks"] is True
+        assert config["tracking"]["model_path"] == "models/face_landmarker.task"
         assert config["tracking"]["left_iris_index"] == 468
         assert config["tracking"]["right_iris_index"] == 473
 

@@ -1,16 +1,23 @@
-"""Real-time iris tracking using MediaPipe FaceMesh.
+"""Real-time iris tracking using MediaPipe FaceLandmarker.
 
-Uses FaceMesh with refine_landmarks=True to get iris center
-landmarks (468 for left, 473 for right eye).
+Uses the Tasks API (mediapipe.tasks) with FaceLandmarker to get
+iris center landmarks (468 for left, 473 for right eye).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
 
 import cv2
 import mediapipe as mp
 import numpy as np
+from mediapipe.tasks.python import BaseOptions
+from mediapipe.tasks.python.vision import (
+    FaceLandmarker,
+    FaceLandmarkerOptions,
+    RunningMode,
+)
 
 
 @dataclass
@@ -52,7 +59,7 @@ class IrisCoordinates:
 
 
 class IrisTracker:
-    """MediaPipe-based iris tracker.
+    """MediaPipe-based iris tracker using the Tasks API.
 
     Parameters
     ----------
@@ -69,12 +76,24 @@ class IrisTracker:
         self._frame_width: int = camera_cfg["frame_width"]
         self._frame_height: int = camera_cfg["frame_height"]
 
-        self._face_mesh = mp.solutions.face_mesh.FaceMesh(
-            max_num_faces=tracking_cfg["max_num_faces"],
-            refine_landmarks=tracking_cfg["refine_landmarks"],
-            min_detection_confidence=tracking_cfg["min_detection_confidence"],
+        model_path = tracking_cfg.get(
+            "model_path", "models/face_landmarker.task"
+        )
+
+        options = FaceLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=str(model_path)),
+            running_mode=RunningMode.VIDEO,
+            num_faces=tracking_cfg["max_num_faces"],
+            min_face_detection_confidence=tracking_cfg[
+                "min_detection_confidence"
+            ],
+            min_face_presence_confidence=tracking_cfg.get(
+                "min_presence_confidence", 0.5
+            ),
             min_tracking_confidence=tracking_cfg["min_tracking_confidence"],
         )
+        self._landmarker = FaceLandmarker.create_from_options(options)
+        self._frame_counter = 0
 
     def process_frame(
         self,
@@ -96,14 +115,25 @@ class IrisTracker:
             Iris positions if face detected, None otherwise.
         """
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self._face_mesh.process(rgb_frame)
+        mp_image = mp.Image(
+            image_format=mp.ImageFormat.SRGB, data=rgb_frame
+        )
 
-        if not results.multi_face_landmarks:
+        self._frame_counter += 1
+        result = self._landmarker.detect_for_video(
+            mp_image, self._frame_counter
+        )
+
+        if not result.face_landmarks:
             return None
 
-        face = results.multi_face_landmarks[0]
-        left = face.landmark[self._left_iris_idx]
-        right = face.landmark[self._right_iris_idx]
+        landmarks = result.face_landmarks[0]
+
+        if len(landmarks) <= max(self._left_iris_idx, self._right_iris_idx):
+            return None
+
+        left = landmarks[self._left_iris_idx]
+        right = landmarks[self._right_iris_idx]
 
         return IrisCoordinates(
             left_x=left.x * self._frame_width,
@@ -116,4 +146,4 @@ class IrisTracker:
 
     def release(self) -> None:
         """Release MediaPipe resources."""
-        self._face_mesh.close()
+        self._landmarker.close()
