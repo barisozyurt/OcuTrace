@@ -1,27 +1,8 @@
 """Tests for storage layer with real SQLite."""
-import os
-import tempfile
-
 import pytest
 
 from src.storage.models import Session, Trial, GazeData
 from src.storage.sqlite_repo import SQLiteRepository
-
-
-@pytest.fixture
-def db_path():
-    fd, path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    yield path
-    os.unlink(path)
-
-
-@pytest.fixture
-def repo(db_path):
-    r = SQLiteRepository(db_path)
-    r.initialize()
-    yield r
-    r.close()
 
 
 class TestSQLiteRepository:
