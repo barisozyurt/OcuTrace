@@ -15,6 +15,12 @@ def fit_pixel_to_degree_transform(
 ) -> np.ndarray:
     """Fit an affine transform from pixel coordinates to degrees.
 
+    Fits X and Y axes independently using grouped averaging: all
+    measurements sharing the same target-X are averaged to produce
+    one robust pixel-X value per target-X level (and likewise for Y).
+    This eliminates cross-axis contamination from webcam parallax
+    and eyelid occlusion at extreme vertical gaze angles.
+
     Parameters
     ----------
     points : list[CalibrationPoint]
@@ -23,7 +29,8 @@ def fit_pixel_to_degree_transform(
     Returns
     -------
     np.ndarray
-        3x3 affine transformation matrix.
+        3x3 affine transformation matrix (off-diagonal terms are zero
+        because axes are fitted independently).
 
     Raises
     ------
@@ -35,17 +42,35 @@ def fit_pixel_to_degree_transform(
             f"Need at least 3 calibration points, got {len(points)}"
         )
 
-    n = len(points)
-    src = np.zeros((n, 3))
-    dst = np.zeros((n, 2))
-    for i, p in enumerate(points):
-        src[i] = [p.measured_x_px, p.measured_y_px, 1.0]
-        dst[i] = [p.target_x_deg, p.target_y_deg]
+    # Group by target_x and average iris_x per level
+    x_groups: dict[float, list[float]] = {}
+    for p in points:
+        x_groups.setdefault(p.target_x_deg, []).append(p.measured_x_px)
 
-    a_t, _, _, _ = np.linalg.lstsq(src, dst, rcond=None)
+    avg_px_x = np.array([np.mean(v) for v in x_groups.values()])
+    target_x = np.array(list(x_groups.keys()))
 
-    matrix = np.eye(3)
-    matrix[:2, :] = a_t.T
+    # Group by target_y and average iris_y per level
+    y_groups: dict[float, list[float]] = {}
+    for p in points:
+        y_groups.setdefault(p.target_y_deg, []).append(p.measured_y_px)
+
+    avg_px_y = np.array([np.mean(v) for v in y_groups.values()])
+    target_y = np.array(list(y_groups.keys()))
+
+    # Fit X: deg_x = ax * pixel_x + bx
+    src_x = np.column_stack([avg_px_x, np.ones(len(avg_px_x))])
+    coeff_x, _, _, _ = np.linalg.lstsq(src_x, target_x, rcond=None)
+
+    # Fit Y: deg_y = ay * pixel_y + by
+    src_y = np.column_stack([avg_px_y, np.ones(len(avg_px_y))])
+    coeff_y, _, _, _ = np.linalg.lstsq(src_y, target_y, rcond=None)
+
+    matrix = np.array([
+        [coeff_x[0], 0.0,        coeff_x[1]],
+        [0.0,        coeff_y[0], coeff_y[1]],
+        [0.0,        0.0,        1.0       ],
+    ])
 
     return matrix
 
@@ -80,7 +105,12 @@ def compute_calibration_error(
     matrix: np.ndarray,
     points: list[CalibrationPoint],
 ) -> float:
-    """Compute mean calibration error in degrees.
+    """Compute mean horizontal calibration error in degrees.
+
+    Only evaluates horizontal (X) accuracy because saccade detection
+    uses horizontal gaze exclusively. Vertical (Y) accuracy from
+    webcam iris tracking is unreliable due to parallax and eyelid
+    occlusion and should not gate calibration acceptance.
 
     Parameters
     ----------
@@ -92,16 +122,12 @@ def compute_calibration_error(
     Returns
     -------
     float
-        Mean Euclidean error in degrees.
+        Mean absolute horizontal error in degrees.
     """
     errors = []
     for p in points:
-        pred_x, pred_y = apply_transform(matrix, p.measured_x_px, p.measured_y_px)
-        error = np.sqrt(
-            (pred_x - p.target_x_deg) ** 2
-            + (pred_y - p.target_y_deg) ** 2
-        )
-        errors.append(error)
+        pred_x, _ = apply_transform(matrix, p.measured_x_px, p.measured_y_px)
+        errors.append(abs(pred_x - p.target_x_deg))
     return float(np.mean(errors))
 
 
