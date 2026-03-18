@@ -4,6 +4,7 @@ from src.experiment.stimulus import (
     StimulusConfig,
     TrialTimestamps,
     create_stimulus_config,
+    create_fixation_dot,
     compute_trial_frame_counts,
     run_single_trial,
 )

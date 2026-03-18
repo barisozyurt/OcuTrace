@@ -33,7 +33,7 @@ from src.tracking.iris_tracker import IrisTracker
 from src.experiment.paradigm import generate_trial_sequence
 from src.experiment.stimulus import (
     create_stimulus_config,
-    create_fixation_cross,
+    create_fixation_dot,
     run_single_trial,
 )
 from src.experiment.session import (
@@ -158,7 +158,6 @@ def main() -> None:
     print(f"{refresh_hz:.1f} Hz")
 
     stim_config = create_stimulus_config(paradigm_cfg, monitor_refresh_hz=refresh_hz)
-    fixation = create_fixation_cross(win)
     clock = core.Clock()
     rng = np.random.default_rng(args.seed)
 
@@ -176,11 +175,12 @@ def main() -> None:
     instruction = visual.TextStim(
         win,
         text=(
+            f"Patient: {args.participant}\n\n"
             "Saccade / Antisaccade Experiment\n\n"
-            "Always look at the center cross first.\n"
-            "The cross color tells you what to do:\n\n"
-            "RED cross  =  look OPPOSITE to the dot\n"
-            "GREEN cross  =  look TOWARD the dot\n\n"
+            "Always look at the center dot first.\n"
+            "The dot color tells you what to do:\n\n"
+            "RED dot  =  look OPPOSITE to the target\n"
+            "GREEN dot  =  look TOWARD the target\n\n"
             "Press SPACE to begin."
         ),
         color="white",
@@ -217,16 +217,9 @@ def main() -> None:
 
     print("-" * 60)
 
-    # Create colored fixation crosses for trial type cues
-    from psychopy import visual as vis
-
-    fixation_anti = create_fixation_cross(win)
-    fixation_anti.lineColor = "red"
-    fixation_anti.fillColor = "red"
-
-    fixation_pro = create_fixation_cross(win)
-    fixation_pro.lineColor = "green"
-    fixation_pro.fillColor = "green"
+    # Create colored fixation dots for trial type cues
+    fixation_anti = create_fixation_dot(win, color="red")
+    fixation_pro = create_fixation_dot(win, color="green")
 
     try:
         for trial_spec in trials:

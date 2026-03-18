@@ -178,47 +178,41 @@ def compute_iti_frame_count(
 # PsychoPy visual components (lazy imports)
 # ---------------------------------------------------------------------------
 
-def create_fixation_cross(win: Any) -> Any:
-    """Create a cross-shaped fixation stimulus.
+def create_fixation_dot(win: Any, color: str = "white") -> Any:
+    """Create a circular fixation dot.
 
     Parameters
     ----------
     win : psychopy.visual.Window
         PsychoPy window to draw into.
+    color : str
+        Dot color (e.g. "white", "red", "green").
 
     Returns
     -------
-    psychopy.visual.ShapeStim
-        White cross-shaped fixation stimulus, 0.5 deg size, lineWidth 3.
+    psychopy.visual.Circle
+        Fixation dot, 0.3 deg radius.
     """
     from psychopy import visual  # lazy import
 
-    # Cross vertices: a plus sign spanning -0.25 to +0.25 deg on each arm
-    half = 0.25  # half-size in degrees
-    arm = 0.05   # half-width of each arm
-    vertices = [
-        (-arm, half),
-        (arm, half),
-        (arm, arm),
-        (half, arm),
-        (half, -arm),
-        (arm, -arm),
-        (arm, -half),
-        (-arm, -half),
-        (-arm, -arm),
-        (-half, -arm),
-        (-half, arm),
-        (-arm, arm),
-    ]
-    return visual.ShapeStim(
+    return visual.Circle(
         win,
-        vertices=vertices,
-        fillColor="white",
-        lineColor="white",
-        lineWidth=3,
+        radius=0.3,
+        pos=(0, 0),
+        fillColor=color,
+        lineColor=color,
         units="deg",
-        closeShape=True,
     )
+
+
+# Keep old name as alias for backward compatibility
+def create_fixation_cross(win: Any) -> Any:
+    """Create a fixation stimulus (dot).
+
+    .. deprecated::
+        Use :func:`create_fixation_dot` instead.
+    """
+    return create_fixation_dot(win, color="white")
 
 
 def create_target(

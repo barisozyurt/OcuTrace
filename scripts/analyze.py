@@ -88,6 +88,7 @@ def analyze_session(session_id: str, repo: SQLiteRepository) -> None:
         session_id=session_id,
         repo=repo,
         calibration_matrix=cal_matrix,
+        participant_name=session.participant_id,
     )
     print(f"\nReport saved: {output_path}")
 

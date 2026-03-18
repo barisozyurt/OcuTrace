@@ -243,6 +243,7 @@ def generate_session_report(
     repo: object,
     calibration_matrix: np.ndarray,
     output_dir: str = "data/reports",
+    participant_name: str = "",
 ) -> Path:
     """Generate a 2x2 clinical report figure and save to disk.
 
@@ -256,6 +257,8 @@ def generate_session_report(
         3x3 affine transform matrix.
     output_dir : str
         Directory to save reports into.
+    participant_name : str
+        Patient/participant name to display on the report.
 
     Returns
     -------
@@ -285,7 +288,9 @@ def generate_session_report(
 
     # Combined 2x2 figure
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    fig.suptitle(f"Session Report: {session_id}", fontsize=14, fontweight="bold")
+
+    title = f"Patient: {participant_name}" if participant_name else f"Session: {session_id}"
+    fig.suptitle(title, fontsize=14, fontweight="bold")
 
     plot_latency_by_trial(trial_dicts, ax=axes[0, 0])
     plot_latency_distribution(trial_dicts, ax=axes[0, 1])
