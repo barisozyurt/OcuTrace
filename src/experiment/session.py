@@ -58,7 +58,8 @@ class GazeCollector:
         self._samples: list[GazeData] = []
         self._lock = threading.Lock()
         self._latest_coords: Optional[IrisCoordinates] = None
-        self._last_recorded_ts: float = -1.0  # deduplicate webcam frames
+        self._latest_frame_id: int = 0
+        self._last_recorded_frame_id: int = -1  # deduplicate webcam frames
         self._running = False
         self._thread: Optional[threading.Thread] = None
 
@@ -95,12 +96,13 @@ class GazeCollector:
         """
         with self._lock:
             coords = self._latest_coords
+            frame_id = self._latest_frame_id
         if coords is None:
             return
         # Skip duplicate webcam frames (webcam ~30fps, PsychoPy ~60fps)
-        if coords.timestamp_ms == self._last_recorded_ts:
+        if frame_id == self._last_recorded_frame_id:
             return
-        self._last_recorded_ts = coords.timestamp_ms
+        self._last_recorded_frame_id = frame_id
         self._samples.append(
             GazeData(
                 session_id=self._session_id,
@@ -124,14 +126,17 @@ class GazeCollector:
 
     def _capture_loop(self) -> None:
         """Background loop: read frames and update latest coordinates."""
+        frame_counter = 0
         while self._running:
             ret, frame = self._cap.read()
             if not ret:
                 continue
+            frame_counter += 1
             ts = time.monotonic() * 1000.0
             coords = self._tracker.process_frame(frame, ts)
             with self._lock:
                 self._latest_coords = coords
+                self._latest_frame_id = frame_counter
 
 
 def analyze_trial(

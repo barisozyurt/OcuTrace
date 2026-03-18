@@ -198,6 +198,12 @@ def main() -> None:
     collector = GazeCollector(tracker, cap, session.session_id)
     collector.start()
 
+    # --- Trial counter on screen (top of screen, small, dim) ---
+    trial_counter_text = visual.TextStim(
+        win, color=[0.3, 0.3, 0.3], height=0.6,
+        pos=(0, 12), anchorHoriz="center",
+    )
+
     # --- Run trials ---
     trial_results: list[dict] = []
     aborted = False
@@ -207,6 +213,16 @@ def main() -> None:
     try:
         for trial_spec in trials:
             collector.set_trial(trial_spec.trial_number)
+
+            # Update on-screen trial counter
+            remaining = len(trials) - trial_spec.trial_number + 1
+            trial_counter_text.text = f"{trial_spec.trial_number}/{len(trials)}"
+
+            # Brief on-screen counter flash before fixation
+            trial_counter_text.draw()
+            fixation.draw()
+            win.flip()
+            core.wait(0.3, hogCPUperiod=0)
 
             # Run stimulus presentation with gaze collection
             timestamps = run_single_trial(
@@ -264,10 +280,11 @@ def main() -> None:
             else:
                 status = "---"
             lat_str = f"{latency:.0f}ms" if latency is not None else "N/A"
+            n_samples = len(gaze_samples)
             print(
                 f"  Trial {trial_spec.trial_number:2d}/{len(trials)} "
                 f"[{trial_spec.trial_type:12s} {trial_spec.stimulus_side:5s}] "
-                f"{status:3s}  lat={lat_str}"
+                f"{status:3s}  lat={lat_str:>8s}  gaze={n_samples}"
             )
 
             # Check for escape key
