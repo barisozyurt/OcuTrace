@@ -7,6 +7,7 @@
 <table>
     <thead>
         <tr>
+            <th>Date / Time</th>
             <th>Participant</th>
             <th>Trials</th>
             <th>Anti Error Rate</th>
@@ -19,6 +20,7 @@
     <tbody>
         {% for item in sessions %}
         <tr>
+            <td style="color: #94a3b8;">{{ item.datetime }}</td>
             <td><strong>{{ item.session.participant_id }}</strong></td>
             <td>{{ item.n_trials }}</td>
             <td>{{ "%.1f%%"|format(item.metrics.antisaccade_error_rate * 100) }}</td>

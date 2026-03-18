@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import io
+from datetime import datetime, timezone
 from typing import Any
 
 import matplotlib
@@ -56,10 +57,14 @@ def register_routes(app: Flask) -> None:
                 for t in trials
             ]
             metrics = compute_session_metrics(trial_dicts)
+            dt = datetime.fromtimestamp(
+                s.created_at / 1000.0, tz=timezone.utc
+            ).strftime("%Y-%m-%d %H:%M")
             session_data.append({
                 "session": s,
                 "n_trials": len(trials),
                 "metrics": metrics,
+                "datetime": dt,
             })
         repo.close()
         return render_template("index.html", sessions=session_data)
@@ -104,6 +109,10 @@ def register_routes(app: Flask) -> None:
             plots["error_rates"] = _fig_to_base64(fig)
             plt.close(fig)
 
+        dt = datetime.fromtimestamp(
+            session.created_at / 1000.0, tz=timezone.utc
+        ).strftime("%Y-%m-%d %H:%M:%S UTC")
+
         repo.close()
         return render_template(
             "session.html",
@@ -111,6 +120,7 @@ def register_routes(app: Flask) -> None:
             trials=trials,
             metrics=metrics,
             plots=plots,
+            datetime=dt,
         )
 
 
