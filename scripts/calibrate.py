@@ -108,22 +108,21 @@ def run_calibration(participant_id: str = "UNKNOWN") -> None:
 
             target_stim.pos = (tx, ty)
 
-            # Show target with countdown during settle + collect
-            total_seconds = int(point_duration_s)
-            for sec in range(total_seconds, 0, -1):
-                countdown_text.text = f"{remaining} targets left  [{sec}s]"
+            # Settle phase with countdown — eyes adjust to target
+            countdown_secs = max(1, int(settle_time_s + 0.5))
+            for sec in range(countdown_secs, 0, -1):
+                countdown_text.text = f"{remaining} left"
                 target_stim.draw()
                 countdown_text.draw()
                 win.flip()
 
-                # Capture frames during this second
                 sec_start = time.monotonic()
                 while (time.monotonic() - sec_start) < 1.0:
                     ret, frame = cap.read()
                     if ret:
                         tracker.process_frame(frame, time.monotonic() * 1000)
 
-            # Now collect iris positions (final pass without countdown)
+            # Collect phase — gather iris positions for calibration
             target_stim.draw()
             win.flip()
 
