@@ -289,7 +289,8 @@ def run_single_trial(
     win : psychopy.visual.Window
         PsychoPy window.
     clock : psychopy.core.Clock
-        Clock for timestamping flips.
+        Reserved for future use (e.g., global session clock). Currently
+        timestamps come from ``win.flip()`` return values.
     fixation : psychopy.visual.ShapeStim
         Pre-created fixation cross stimulus.
     side : str
@@ -347,7 +348,6 @@ def run_single_trial(
         timestamp_ms = flip_time * 1000.0
         if i == 0:
             ts.stimulus_onset_ms = timestamp_ms
-        ts.stimulus_offset_ms = timestamp_ms
         if on_frame is not None:
             on_frame("stimulus", i, timestamp_ms)
 
@@ -357,6 +357,8 @@ def run_single_trial(
         timestamp_ms = flip_time * 1000.0
         if i == 0:
             ts.iti_onset_ms = timestamp_ms
+            # The first ITI flip is the true stimulus offset (screen cleared)
+            ts.stimulus_offset_ms = timestamp_ms
         if on_frame is not None:
             on_frame("iti", i, timestamp_ms)
 

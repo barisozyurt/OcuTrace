@@ -5,9 +5,12 @@ prosaccade trials with left/right stimulus side balancing.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 VALID_TRIAL_TYPES = ("antisaccade", "prosaccade")
 VALID_STIMULUS_SIDES = ("left", "right")
@@ -157,6 +160,12 @@ def _enforce_max_consecutive(
             paired[violation_idx], paired[swap_idx] = (
                 paired[swap_idx],
                 paired[violation_idx],
+            )
+        else:
+            logger.warning(
+                "Could not find swap candidate to fix consecutive "
+                "constraint at index %d",
+                violation_idx,
             )
 
 
