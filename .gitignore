@@ -5,6 +5,9 @@ CLAUDE.md
 # MediaPipe model files
 models/
 
+# Design docs (local only)
+docs/plans/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
