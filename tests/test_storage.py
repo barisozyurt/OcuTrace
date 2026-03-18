@@ -1,7 +1,8 @@
 """Tests for storage layer with real SQLite."""
+import numpy as np
 import pytest
 
-from src.storage.models import Session, Trial, GazeData
+from src.storage.models import Session, Trial, GazeData, CalibrationPoint, CalibrationResult
 from src.storage.sqlite_repo import SQLiteRepository
 
 
@@ -69,3 +70,28 @@ class TestSQLiteRepository:
         loaded = repo.get_session(session.session_id)
         assert loaded.glasses_detected is True
         assert loaded.tracking_quality_score == 0.85
+
+
+class TestCalibrationStorage:
+    def test_save_and_load_calibration(self, repo):
+        session = Session(participant_id="SUBJ001")
+        repo.save_session(session)
+        points = [
+            CalibrationPoint(float(x), 0.0, 320.0 + x * 13.0, 240.0)
+            for x in [-10, -5, 0, 5, 10]
+        ]
+        cal = CalibrationResult(
+            session_id=session.session_id, points=points,
+            transform_matrix=np.eye(3).tolist(),
+            mean_error_deg=0.5, accepted=True,
+        )
+        repo.save_calibration(cal)
+        loaded = repo.get_calibration(session.session_id)
+        assert loaded is not None
+        assert loaded.accepted is True
+        assert loaded.mean_error_deg == 0.5
+        assert len(loaded.points) == 5
+        assert loaded.points[0].target_x_deg == -10.0
+
+    def test_get_calibration_not_found(self, repo):
+        assert repo.get_calibration("nonexistent") is None

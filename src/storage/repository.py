@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from src.storage.models import Session, Trial, GazeData
+from src.storage.models import Session, Trial, GazeData, CalibrationResult, CalibrationPoint
 
 
 class Repository(ABC):
@@ -53,3 +53,11 @@ class Repository(ABC):
         trial_number: Optional[int] = None,
     ) -> list[GazeData]:
         """Get gaze data for a session, optionally filtered by trial."""
+
+    @abstractmethod
+    def save_calibration(self, calibration: CalibrationResult) -> None:
+        """Persist a calibration result."""
+
+    @abstractmethod
+    def get_calibration(self, session_id: str) -> Optional[CalibrationResult]:
+        """Get calibration for a session. Returns None if not found."""

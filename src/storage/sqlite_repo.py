@@ -1,10 +1,11 @@
 """SQLite implementation of the Repository interface."""
 from __future__ import annotations
 
+import json
 import sqlite3
 from typing import Optional
 
-from src.storage.models import Session, Trial, GazeData
+from src.storage.models import Session, Trial, GazeData, CalibrationResult, CalibrationPoint
 from src.storage.repository import Repository
 
 
@@ -70,6 +71,14 @@ class SQLiteRepository(Repository):
             );
             CREATE INDEX IF NOT EXISTS idx_gaze_session_trial
             ON gaze_data(session_id, trial_number);
+            CREATE TABLE IF NOT EXISTS calibrations (
+                session_id TEXT PRIMARY KEY,
+                points_json TEXT NOT NULL,
+                transform_matrix_json TEXT NOT NULL,
+                mean_error_deg REAL NOT NULL,
+                accepted INTEGER NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES sessions(session_id)
+            );
         """)
 
     def save_session(self, session: Session) -> None:
@@ -235,6 +244,50 @@ class SQLiteRepository(Repository):
             )
             for r in rows
         ]
+
+
+    def save_calibration(self, calibration: CalibrationResult) -> None:
+        """Persist a calibration result."""
+        points_json = json.dumps([
+            {
+                "target_x_deg": p.target_x_deg,
+                "target_y_deg": p.target_y_deg,
+                "measured_x_px": p.measured_x_px,
+                "measured_y_px": p.measured_y_px,
+            }
+            for p in calibration.points
+        ])
+        matrix_json = json.dumps(calibration.transform_matrix)
+        self._conn.execute(
+            """INSERT OR REPLACE INTO calibrations
+               (session_id, points_json, transform_matrix_json, mean_error_deg, accepted)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                calibration.session_id,
+                points_json,
+                matrix_json,
+                calibration.mean_error_deg,
+                1 if calibration.accepted else 0,
+            ),
+        )
+        self._conn.commit()
+
+    def get_calibration(self, session_id: str) -> Optional[CalibrationResult]:
+        """Get calibration for a session."""
+        row = self._conn.execute(
+            "SELECT * FROM calibrations WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        points = [CalibrationPoint(**p) for p in json.loads(row[1])]
+        return CalibrationResult(
+            session_id=row[0],
+            points=points,
+            transform_matrix=json.loads(row[2]),
+            mean_error_deg=row[3],
+            accepted=bool(row[4]),
+        )
 
 
 def _bool_to_int(value: Optional[bool]) -> Optional[int]:
