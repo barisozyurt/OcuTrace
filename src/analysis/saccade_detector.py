@@ -7,7 +7,10 @@ offset when velocity drops below a lower threshold.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 
@@ -89,7 +92,8 @@ def detect_saccades(
         if run_length < min_onset_frames:
             break  # no more onsets found
 
-        assert run_start is not None
+        if run_start is None:  # pragma: no cover — defensive guard
+            break
         onset_idx = run_start
 
         # 2. Continue scanning until velocity drops below offset_threshold
@@ -141,4 +145,9 @@ def classify_direction(
         ``"right"`` if the displacement is positive, ``"left"`` otherwise.
     """
     displacement = float(positions_deg[offset_idx] - positions_deg[onset_idx])
-    return "right" if displacement > 0 else "left"
+    if displacement == 0.0:
+        logger.warning(
+            "Zero displacement saccade at onset_idx=%d, defaulting to 'right'",
+            onset_idx,
+        )
+    return "right" if displacement >= 0 else "left"
