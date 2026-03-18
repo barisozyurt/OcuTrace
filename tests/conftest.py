@@ -134,3 +134,27 @@ def synthetic_gaze_data(sample_session, synthetic_fixation_coords):
         )
         for c in synthetic_fixation_coords
     ]
+
+
+@pytest.fixture
+def synthetic_saccade_degrees(rng: np.random.Generator) -> dict:
+    """Synthetic saccade in degree space for pipeline integration test.
+
+    500ms fixation at 0° -> rightward saccade to 10° -> 500ms fixation.
+    30fps, timestamps in ms.
+    """
+    fps = 30
+    dt_ms = 1000.0 / fps
+    fix1 = np.full(15, 0.0) + rng.normal(0, 0.1, 15)
+    saccade = np.linspace(0, 10, 5)
+    fix2 = np.full(15, 10.0) + rng.normal(0, 0.1, 15)
+    positions = np.concatenate([fix1, saccade, fix2])
+    timestamps = np.arange(len(positions)) * dt_ms
+    return {
+        "positions_deg": positions,
+        "timestamps_ms": timestamps,
+        "expected_onset_idx": 15,
+        "expected_direction": "right",
+        "stimulus_onset_ms": 500.0,
+        "expected_latency_ms": 0.0,
+    }
