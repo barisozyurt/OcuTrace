@@ -28,6 +28,12 @@ storage:
   backend: sqlite
   sqlite:
     database_path: data/ocutrace.db
+  mariadb:
+    host: localhost
+    port: 3306
+    user: ocutrace
+    password: ocutrace
+    database: ocutrace
 
 saccade_detection:
   # Savitzky-Golay filter (window=3 for 30fps webcam; use 5 for 60fps+)
