@@ -30,13 +30,14 @@ storage:
     database_path: data/ocutrace.db
 
 saccade_detection:
-  # Savitzky-Golay filter
-  smoothing_window: 5
+  # Savitzky-Golay filter (window=3 for 30fps webcam; use 5 for 60fps+)
+  smoothing_window: 3
   smoothing_polyorder: 2
   # Velocity thresholds (degrees/second)
-  onset_velocity_threshold: 30.0
-  offset_velocity_threshold: 20.0
-  min_onset_frames: 3
+  # Lowered from clinical 30/20 for webcam iris tracking (~14px range)
+  onset_velocity_threshold: 20.0
+  offset_velocity_threshold: 10.0
+  min_onset_frames: 2  # 2 frames at 30fps = 67ms (saccades are 30-80ms)
 
 paradigm:
   # Gap antisaccade protocol

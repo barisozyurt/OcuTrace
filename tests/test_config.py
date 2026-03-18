@@ -34,6 +34,6 @@ class TestLoadConfig:
 
     def test_nested_access(self):
         config = load_config()
-        assert config["saccade_detection"]["smoothing_window"] == 5
+        assert config["saccade_detection"]["smoothing_window"] == 3
         assert config["paradigm"]["n_antisaccade_trials"] == 40
         assert config["glasses_detection"]["jitter_threshold_px"] == 2.0
