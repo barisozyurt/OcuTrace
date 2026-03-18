@@ -58,4 +58,4 @@ display:
 calibration:
   n_points: 9
   point_duration_ms: 2000
-  max_acceptable_error_deg: 2.0
+  max_acceptable_error_deg: 3.0
