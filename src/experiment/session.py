@@ -205,6 +205,12 @@ def analyze_trial(
         min_onset_frames=saccade_cfg["min_onset_frames"],
     )
 
+    max_vel = float(np.max(velocity)) if len(velocity) > 0 else 0.0
+    logger.debug(
+        "Trial %d: %d samples, max_velocity=%.1f deg/s, %d saccades detected",
+        trial_spec.trial_number, len(gaze_samples), max_vel, len(events),
+    )
+
     if not events:
         return None, None, None
 

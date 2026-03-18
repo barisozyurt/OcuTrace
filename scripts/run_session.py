@@ -15,10 +15,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+import logging
+
 import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# Enable debug logging for saccade analysis diagnostics
+logging.basicConfig(level=logging.WARNING)
+logging.getLogger("src.experiment.session").setLevel(logging.DEBUG)
 
 from src.config import load_config
 from src.storage.models import Session, Trial
