@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="nav">
+    <a href="/">&larr; All Sessions</a>
+</div>
+
+<h1>Session: {{ session.participant_id }}</h1>
+<p style="color: #64748b; margin-bottom: 1.5rem;">{{ session.session_id }}</p>
+
+<div class="card">
+    <div class="metric">
+        <div class="metric-value">{{ metrics.n_antisaccade_trials + metrics.n_prosaccade_trials }}</div>
+        <div class="metric-label">Total Trials</div>
+    </div>
+    <div class="metric">
+        <div class="metric-value">{{ "%.1f%%"|format(metrics.antisaccade_error_rate * 100) }}</div>
+        <div class="metric-label">Anti Error Rate</div>
+    </div>
+    <div class="metric">
+        <div class="metric-value">{{ "%.1f%%"|format(metrics.prosaccade_error_rate * 100) }}</div>
+        <div class="metric-label">Pro Error Rate</div>
+    </div>
+    <div class="metric">
+        <div class="metric-value">{{ "%.0f ms"|format(metrics.mean_antisaccade_latency_ms) if metrics.mean_antisaccade_latency_ms else "N/A" }}</div>
+        <div class="metric-label">Mean Anti Latency</div>
+    </div>
+    <div class="metric">
+        <div class="metric-value">{{ "%.0f ms"|format(metrics.mean_prosaccade_latency_ms) if metrics.mean_prosaccade_latency_ms else "N/A" }}</div>
+        <div class="metric-label">Mean Pro Latency</div>
+    </div>
+</div>
+
+{% if plots %}
+<h2>Plots</h2>
+<div class="plot-grid">
+    {% if plots.latency_trial %}
+    <img src="data:image/png;base64,{{ plots.latency_trial }}" alt="Latency by Trial">
+    {% endif %}
+    {% if plots.latency_dist %}
+    <img src="data:image/png;base64,{{ plots.latency_dist }}" alt="Latency Distribution">
+    {% endif %}
+    {% if plots.error_rates %}
+    <img src="data:image/png;base64,{{ plots.error_rates }}" alt="Error Rates">
+    {% endif %}
+</div>
+{% endif %}
+
+<h2>Trial Details</h2>
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Side</th>
+            <th>Direction</th>
+            <th>Latency</th>
+            <th>Result</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in trials %}
+        <tr>
+            <td>{{ t.trial_number }}</td>
+            <td><span class="badge {{ 'badge-anti' if t.trial_type == 'antisaccade' else 'badge-pro' }}">{{ t.trial_type }}</span></td>
+            <td>{{ t.stimulus_side }}</td>
+            <td>{{ t.saccade_direction or "\u2014" }}</td>
+            <td>{{ "%.0f ms"|format(t.saccade_latency_ms) if t.saccade_latency_ms else "\u2014" }}</td>
+            <td>
+                {% if t.response_correct == true %}
+                <span class="ok">OK</span>
+                {% elif t.response_correct == false %}
+                <span class="err">ERR</span>
+                {% else %}
+                <span class="na">\u2014</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

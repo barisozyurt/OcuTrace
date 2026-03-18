@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>OcuTrace Dashboard</h1>
+<p style="color: #94a3b8; margin-bottom: 2rem;">Webcam-based saccade & antisaccade analysis</p>
+
+{% if sessions %}
+<table>
+    <thead>
+        <tr>
+            <th>Participant</th>
+            <th>Trials</th>
+            <th>Anti Error Rate</th>
+            <th>Pro Error Rate</th>
+            <th>Mean Anti Latency</th>
+            <th>Mean Pro Latency</th>
+            <th>Session</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in sessions %}
+        <tr>
+            <td><strong>{{ item.session.participant_id }}</strong></td>
+            <td>{{ item.n_trials }}</td>
+            <td>{{ "%.1f%%"|format(item.metrics.antisaccade_error_rate * 100) }}</td>
+            <td>{{ "%.1f%%"|format(item.metrics.prosaccade_error_rate * 100) }}</td>
+            <td>{{ "%.0f ms"|format(item.metrics.mean_antisaccade_latency_ms) if item.metrics.mean_antisaccade_latency_ms else "N/A" }}</td>
+            <td>{{ "%.0f ms"|format(item.metrics.mean_prosaccade_latency_ms) if item.metrics.mean_prosaccade_latency_ms else "N/A" }}</td>
+            <td><a href="/session/{{ item.session.session_id }}">View</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="card">
+    <p>No sessions recorded yet. Run a session first:</p>
+    <code>python scripts/run_session.py --participant SUBJ001 --calibrate</code>
+</div>
+{% endif %}
+{% endblock %}
