@@ -142,6 +142,14 @@ def run_calibration(participant_id: str = "UNKNOWN") -> None:
 
             mean_x = float(np.mean([c.mean_x for c in iris_samples]))
             mean_y = float(np.mean([c.mean_y for c in iris_samples]))
+            std_x = float(np.std([c.mean_x for c in iris_samples]))
+            std_y = float(np.std([c.mean_y for c in iris_samples]))
+
+            print(
+                f"    samples={len(iris_samples):3d}  "
+                f"iris_px=({mean_x:.1f}, {mean_y:.1f})  "
+                f"std=({std_x:.2f}, {std_y:.2f})"
+            )
 
             calibration_points.append(CalibrationPoint(
                 target_x_deg=tx,
