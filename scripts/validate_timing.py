@@ -27,10 +27,18 @@ from src.experiment.stimulus import (
 
 def main() -> None:
     """Run timing validation and report results."""
-    from psychopy import visual, core
+    from psychopy import visual, core, monitors
 
     config = load_config()
     paradigm_cfg = config["paradigm"]
+    display_cfg = config["display"]
+
+    # --- Configure monitor for degree-based units ---
+    mon = monitors.Monitor("OcuTrace")
+    mon.setWidth(display_cfg["screen_width_cm"])
+    mon.setDistance(display_cfg["viewing_distance_cm"])
+    mon.setSizePix(display_cfg["screen_resolution"])
+    mon.saveMon()
 
     # --- Create PsychoPy window ---
     win = visual.Window(
@@ -38,6 +46,7 @@ def main() -> None:
         units="deg",
         color="black",
         allowGUI=False,
+        monitor=mon,
     )
 
     # --- Detect actual refresh rate ---

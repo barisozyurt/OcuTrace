@@ -60,13 +60,20 @@ def run_calibration(participant_id: str = "UNKNOWN") -> None:
     )
 
     try:
-        from psychopy import visual, core, event
+        from psychopy import visual, core, event, monitors
+
+        display_cfg = config["display"]
+        mon = monitors.Monitor("OcuTrace")
+        mon.setWidth(display_cfg["screen_width_cm"])
+        mon.setDistance(display_cfg["viewing_distance_cm"])
+        mon.setSizePix(display_cfg["screen_resolution"])
+        mon.saveMon()
 
         win = visual.Window(
             fullscr=True,
             color="black",
             units="deg",
-            monitor="testMonitor",
+            monitor=mon,
         )
 
         target_stim = visual.Circle(

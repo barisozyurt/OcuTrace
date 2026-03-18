@@ -49,6 +49,12 @@ paradigm:
   n_antisaccade_trials: 40
   n_prosaccade_trials: 20
 
+display:
+  # Monitor physical properties (needed for degree-based units)
+  screen_width_cm: 53.0         # physical screen width in cm
+  viewing_distance_cm: 60.0     # subject-to-screen distance in cm
+  screen_resolution: [1920, 1080]
+
 calibration:
   n_points: 9
   point_duration_ms: 2000
