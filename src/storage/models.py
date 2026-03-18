@@ -148,3 +148,48 @@ class TrackingQuality:
     mean_jitter_px: float
     glasses_detected: bool
     quality_acceptable: bool
+
+
+@dataclass
+class CalibrationPoint:
+    """A single calibration target measurement.
+
+    Parameters
+    ----------
+    target_x_deg : float
+        Target position X in degrees from center.
+    target_y_deg : float
+        Target position Y in degrees from center.
+    measured_x_px : float
+        Mean measured iris X in pixels at this target.
+    measured_y_px : float
+        Mean measured iris Y in pixels at this target.
+    """
+    target_x_deg: float
+    target_y_deg: float
+    measured_x_px: float
+    measured_y_px: float
+
+
+@dataclass
+class CalibrationResult:
+    """Result of a calibration procedure.
+
+    Parameters
+    ----------
+    session_id : str
+        Session this calibration belongs to.
+    points : list[CalibrationPoint]
+        All calibration measurements.
+    transform_matrix : list[list[float]]
+        3x3 affine transform matrix (pixel to degree), stored as nested list.
+    mean_error_deg : float
+        Mean validation error in degrees.
+    accepted : bool
+        Whether error is within acceptable threshold.
+    """
+    session_id: str
+    points: list[CalibrationPoint]
+    transform_matrix: list[list[float]]
+    mean_error_deg: float
+    accepted: bool
