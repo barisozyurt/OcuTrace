@@ -37,7 +37,8 @@ saccade_detection:
   # Lowered from clinical 30/20 for webcam iris tracking (~14px range)
   onset_velocity_threshold: 20.0
   offset_velocity_threshold: 10.0
-  min_onset_frames: 2  # 2 frames at 30fps = 67ms (saccades are 30-80ms)
+  min_onset_frames: 1  # 1 frame sufficient at 30fps with amplitude check
+  min_saccade_amplitude_deg: 2.0  # reject noise-triggered detections < 2 deg
 
 paradigm:
   # Gap antisaccade protocol

@@ -145,6 +145,7 @@ def analyze_trial(
     stimulus_onset_ms: float,
     calibration_matrix: np.ndarray,
     saccade_cfg: dict,
+    max_latency_ms: float = 1500.0,
 ) -> tuple[Optional[str], Optional[float], Optional[bool]]:
     """Analyze a single trial's gaze data for saccade detection.
 
@@ -214,14 +215,31 @@ def analyze_trial(
     if not events:
         return None, None, None
 
-    # Find first saccade near or after stimulus onset (allow 80 ms anticipatory)
+    # Find first valid saccade: after stimulus onset (allow 80ms anticipatory)
+    # and within the stimulus response window (max_latency_ms)
+    max_onset_ms = stimulus_onset_ms + max_latency_ms
     first = None
     for event in events:
-        if event.onset_ms >= stimulus_onset_ms - 80.0:
-            first = event
-            break
+        if event.onset_ms < stimulus_onset_ms - 80.0:
+            continue  # too early (before stimulus)
+        if event.onset_ms > max_onset_ms:
+            break  # too late (ITI movement, not a response)
+        first = event
+        break
 
     if first is None:
+        return None, None, None
+
+    # Check minimum saccade amplitude to reject noise
+    min_amplitude = saccade_cfg.get("min_saccade_amplitude_deg", 0.0)
+    amplitude = abs(
+        float(smoothed[first.offset_idx]) - float(smoothed[first.onset_idx])
+    )
+    if amplitude < min_amplitude:
+        logger.debug(
+            "Trial %d: saccade amplitude %.1f deg < %.1f min, rejecting",
+            trial_spec.trial_number, amplitude, min_amplitude,
+        )
         return None, None, None
 
     direction = classify_direction(smoothed, first.onset_idx, first.offset_idx)
