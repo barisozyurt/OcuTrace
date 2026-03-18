@@ -80,6 +80,9 @@ class GazeCollector:
     def on_frame(self, phase: str, frame_idx: int, timestamp_ms: float) -> None:
         """PsychoPy on_frame callback — records latest iris position.
 
+        Uses the PsychoPy flip timestamp (not the camera timestamp) so
+        that gaze data and stimulus timestamps share the same clock.
+
         Parameters
         ----------
         phase : str
@@ -87,7 +90,7 @@ class GazeCollector:
         frame_idx : int
             Frame index within the current phase.
         timestamp_ms : float
-            Flip timestamp in milliseconds.
+            Flip timestamp in milliseconds (from PsychoPy clock).
         """
         with self._lock:
             coords = self._latest_coords
@@ -96,7 +99,7 @@ class GazeCollector:
                 GazeData(
                     session_id=self._session_id,
                     trial_number=self._trial_number,
-                    timestamp_ms=coords.timestamp_ms,
+                    timestamp_ms=timestamp_ms,  # Use PsychoPy clock, not camera clock
                     left_iris_x=coords.left_x,
                     left_iris_y=coords.left_y,
                     right_iris_x=coords.right_x,

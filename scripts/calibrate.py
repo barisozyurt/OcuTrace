@@ -97,21 +97,36 @@ def run_calibration(participant_id: str = "UNKNOWN") -> None:
         settle_time_s = 0.5
         collect_time_s = point_duration_s - settle_time_s
 
+        # Create countdown text stimulus
+        countdown_text = visual.TextStim(
+            win, color="white", height=0.8, pos=(0, -2),
+        )
+
         for i, (tx, ty) in enumerate(targets):
+            remaining = len(targets) - i
             print(f"  Target {i+1}/{len(targets)}: ({tx:.1f}, {ty:.1f}) deg")
 
             target_stim.pos = (tx, ty)
+
+            # Show target with countdown during settle + collect
+            total_seconds = int(point_duration_s)
+            for sec in range(total_seconds, 0, -1):
+                countdown_text.text = f"{remaining} targets left  [{sec}s]"
+                target_stim.draw()
+                countdown_text.draw()
+                win.flip()
+
+                # Capture frames during this second
+                sec_start = time.monotonic()
+                while (time.monotonic() - sec_start) < 1.0:
+                    ret, frame = cap.read()
+                    if ret:
+                        tracker.process_frame(frame, time.monotonic() * 1000)
+
+            # Now collect iris positions (final pass without countdown)
             target_stim.draw()
             win.flip()
 
-            # Wait for eyes to settle
-            settle_start = time.monotonic()
-            while (time.monotonic() - settle_start) < settle_time_s:
-                ret, frame = cap.read()
-                if ret:
-                    tracker.process_frame(frame, time.monotonic() * 1000)
-
-            # Collect iris positions
             iris_samples: list[IrisCoordinates] = []
             collect_start = time.monotonic()
             while (time.monotonic() - collect_start) < collect_time_s:
