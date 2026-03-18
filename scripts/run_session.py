@@ -109,18 +109,24 @@ def main() -> None:
     print(f"Session: {session.session_id}")
 
     # --- Initialize tracker + camera ---
+    print("Initializing iris tracker...", end=" ", flush=True)
     tracker = IrisTracker(config)
+    print("OK")
+
+    print("Opening camera...", end=" ", flush=True)
     cap = cv2.VideoCapture(cam_cfg["device_index"])
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, cam_cfg["frame_width"])
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cam_cfg["frame_height"])
 
     if not cap.isOpened():
-        print("ERROR: Cannot open camera")
+        print("FAILED")
         tracker.release()
         repo.close()
         sys.exit(1)
+    print("OK")
 
     # --- Initialize PsychoPy ---
+    print("Initializing display...", end=" ", flush=True)
     from psychopy import visual, core, event, monitors
 
     mon = monitors.Monitor("OcuTrace")
@@ -136,12 +142,14 @@ def main() -> None:
         allowGUI=False,
         monitor=mon,
     )
+    print("OK")
 
+    print("Measuring refresh rate...", end=" ", flush=True)
     actual_hz = win.getActualFrameRate(
-        nIdentical=10, nMaxFrames=100, nWarmUpFrames=10
+        nIdentical=10, nMaxFrames=60, nWarmUpFrames=10
     )
     refresh_hz = actual_hz if actual_hz is not None else 60.0
-    print(f"Refresh rate: {refresh_hz:.1f} Hz")
+    print(f"{refresh_hz:.1f} Hz")
 
     stim_config = create_stimulus_config(paradigm_cfg, monitor_refresh_hz=refresh_hz)
     fixation = create_fixation_cross(win)
@@ -156,6 +164,7 @@ def main() -> None:
     )
     print(f"Trials: {len(trials)} ({paradigm_cfg['n_antisaccade_trials']} anti + "
           f"{paradigm_cfg['n_prosaccade_trials']} pro)")
+    print("Ready!\n")
 
     # --- Show instructions ---
     instruction = visual.TextStim(
@@ -182,96 +191,100 @@ def main() -> None:
     trial_results: list[dict] = []
     aborted = False
 
-    print("\n" + "-" * 60)
+    print("-" * 60)
 
-    for trial_spec in trials:
-        collector.set_trial(trial_spec.trial_number)
+    try:
+        for trial_spec in trials:
+            collector.set_trial(trial_spec.trial_number)
 
-        # Run stimulus presentation with gaze collection
-        timestamps = run_single_trial(
-            win=win,
-            clock=clock,
-            fixation=fixation,
-            side=trial_spec.stimulus_side,
-            config=stim_config,
-            rng=rng,
-            on_frame=collector.on_frame,
-        )
+            # Run stimulus presentation with gaze collection
+            timestamps = run_single_trial(
+                win=win,
+                clock=clock,
+                fixation=fixation,
+                side=trial_spec.stimulus_side,
+                config=stim_config,
+                rng=rng,
+                on_frame=collector.on_frame,
+            )
 
-        # Get gaze samples for this trial
-        gaze_samples = collector.get_trial_samples(trial_spec.trial_number)
+            # Get gaze samples for this trial
+            gaze_samples = collector.get_trial_samples(trial_spec.trial_number)
 
-        # Save raw gaze data
-        if gaze_samples:
-            repo.save_gaze_data_batch(gaze_samples)
+            # Save raw gaze data
+            if gaze_samples:
+                repo.save_gaze_data_batch(gaze_samples)
 
-        # Analyze trial
-        direction, latency, correct = analyze_trial(
-            gaze_samples,
-            trial_spec,
-            timestamps.stimulus_onset_ms,
-            cal_matrix,
-            saccade_cfg,
-        )
+            # Analyze trial
+            direction, latency, correct = analyze_trial(
+                gaze_samples,
+                trial_spec,
+                timestamps.stimulus_onset_ms,
+                cal_matrix,
+                saccade_cfg,
+            )
 
-        # Save trial record
-        trial = Trial(
-            session_id=session.session_id,
-            trial_number=trial_spec.trial_number,
-            trial_type=trial_spec.trial_type,
-            stimulus_side=trial_spec.stimulus_side,
-            stimulus_onset_ms=timestamps.stimulus_onset_ms,
-            saccade_direction=direction,
-            saccade_latency_ms=latency,
-            response_correct=correct,
-        )
-        repo.save_trial(trial)
+            # Save trial record
+            trial = Trial(
+                session_id=session.session_id,
+                trial_number=trial_spec.trial_number,
+                trial_type=trial_spec.trial_type,
+                stimulus_side=trial_spec.stimulus_side,
+                stimulus_onset_ms=timestamps.stimulus_onset_ms,
+                saccade_direction=direction,
+                saccade_latency_ms=latency,
+                response_correct=correct,
+            )
+            repo.save_trial(trial)
 
-        trial_results.append(
-            {
-                "trial_type": trial_spec.trial_type,
-                "response_correct": correct,
-                "saccade_latency_ms": latency,
-            }
-        )
+            trial_results.append(
+                {
+                    "trial_type": trial_spec.trial_type,
+                    "response_correct": correct,
+                    "saccade_latency_ms": latency,
+                }
+            )
 
-        # Progress indicator
-        if correct is True:
-            status = "OK"
-        elif correct is False:
-            status = "ERR"
-        else:
-            status = "---"
-        lat_str = f"{latency:.0f}ms" if latency is not None else "N/A"
-        print(
-            f"  Trial {trial_spec.trial_number:2d}/{len(trials)} "
-            f"[{trial_spec.trial_type:12s} {trial_spec.stimulus_side:5s}] "
-            f"{status:3s}  lat={lat_str}"
-        )
+            # Progress indicator
+            if correct is True:
+                status = "OK"
+            elif correct is False:
+                status = "ERR"
+            else:
+                status = "---"
+            lat_str = f"{latency:.0f}ms" if latency is not None else "N/A"
+            print(
+                f"  Trial {trial_spec.trial_number:2d}/{len(trials)} "
+                f"[{trial_spec.trial_type:12s} {trial_spec.stimulus_side:5s}] "
+                f"{status:3s}  lat={lat_str}"
+            )
 
-        # Check for escape key
-        keys = event.getKeys(keyList=["escape"])
-        if keys:
-            print("\nSession aborted by user.")
-            aborted = True
-            break
+            # Check for escape key
+            keys = event.getKeys(keyList=["escape"])
+            if keys:
+                print("\nSession aborted by user (ESC).")
+                aborted = True
+                break
 
-    # --- Stop gaze collection ---
+    except KeyboardInterrupt:
+        print("\nSession aborted by user (Ctrl+C).")
+        aborted = True
+
+    # --- Cleanup (always runs) ---
     collector.stop()
 
-    # --- Compute and display session metrics ---
-    metrics = compute_session_metrics(trial_results)
-    print_session_summary(metrics)
+    if trial_results:
+        metrics = compute_session_metrics(trial_results)
+        print_session_summary(metrics)
+        if aborted:
+            print("NOTE: Session was aborted early. Metrics are partial.")
+    else:
+        print("\nNo trials completed.")
 
-    if aborted:
-        print("NOTE: Session was aborted early. Metrics are partial.")
-
-    # --- Cleanup ---
     win.close()
     cap.release()
     tracker.release()
     repo.close()
-    core.quit()
 
 
 if __name__ == "__main__":
