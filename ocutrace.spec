@@ -12,6 +12,8 @@ a = Analysis(
     datas=[
         ('config/settings.yaml', 'config'),
         ('models/face_landmarker.task', 'models'),
+        # MediaPipe native library
+        ('.venv/lib/site-packages/mediapipe/tasks/c', 'mediapipe/tasks/c'),
     ],
     hiddenimports=[
         # wxPython
@@ -28,6 +30,7 @@ a = Analysis(
         # MediaPipe
         'mediapipe',
         'mediapipe.tasks',
+        'mediapipe.tasks.c',
         'mediapipe.tasks.python',
         'mediapipe.tasks.python.vision',
         'mediapipe.tasks.python.vision.face_landmarker',
