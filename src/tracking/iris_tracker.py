@@ -76,9 +76,14 @@ class IrisTracker:
         self._frame_width: int = camera_cfg["frame_width"]
         self._frame_height: int = camera_cfg["frame_height"]
 
-        model_path = tracking_cfg.get(
+        from src.paths import get_bundle_dir
+
+        raw_model_path = tracking_cfg.get(
             "model_path", "models/face_landmarker.task"
         )
+        model_path = Path(raw_model_path)
+        if not model_path.is_absolute():
+            model_path = get_bundle_dir() / model_path
 
         options = FaceLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=str(model_path)),

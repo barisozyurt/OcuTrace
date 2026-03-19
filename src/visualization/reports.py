@@ -242,7 +242,7 @@ def generate_session_report(
     session_id: str,
     repo: object,
     calibration_matrix: np.ndarray,
-    output_dir: str = "data/reports",
+    output_dir: str = "",
     participant_name: str = "",
 ) -> Path:
     """Generate a 2x2 clinical report figure and save to disk.
@@ -265,7 +265,11 @@ def generate_session_report(
     Path
         Path to the saved combined report PNG.
     """
-    out = Path(output_dir)
+    if not output_dir:
+        from src.paths import get_reports_dir
+        out = get_reports_dir()
+    else:
+        out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     trials = repo.get_trials(session_id)

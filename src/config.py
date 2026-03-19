@@ -10,7 +10,9 @@ from typing import Any, Optional
 
 import yaml
 
-_DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "config" / "settings.yaml"
+from src.paths import get_config_path
+
+_DEFAULT_CONFIG_PATH = get_config_path()
 _config_cache: Optional[dict[str, Any]] = None
 
 
