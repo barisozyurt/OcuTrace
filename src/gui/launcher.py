@@ -219,7 +219,15 @@ class LauncherFrame(wx.Frame):
         try:
             from src.orchestrator import generate_report
             report_path = generate_report(session_id=self._last_session_id)
-            os.startfile(str(report_path))
+            import platform
+            if platform.system() == "Windows":
+                os.startfile(str(report_path))
+            elif platform.system() == "Darwin":
+                import subprocess
+                subprocess.run(["open", str(report_path)])
+            else:
+                import subprocess
+                subprocess.run(["xdg-open", str(report_path)])
             self._set_ready(f"Report: {report_path.name}")
         except Exception as e:
             self._set_ready(f"Error: {e}", success=False)

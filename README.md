@@ -47,27 +47,62 @@ Elevated antisaccade error rates and increased latencies are associated with fro
 ### Requirements
 - **Python 3.10** (PsychoPy is not compatible with 3.12+)
 - **Webcam** (built-in laptop camera works)
-- **Windows 10/11** (cross-platform support planned)
+- **Windows 10/11** or **macOS** (Linux support planned)
 
-### Setup
+### Windows Setup
 
-```bash
+```powershell
+# 1. Download and extract the zip, or clone the repo
 git clone https://github.com/barisozyurt/OcuTrace.git
 cd OcuTrace
 
-# Create virtual environment with Python 3.10
-python3.10 -m venv .venv
+# 2. Create virtual environment with Python 3.10
+python -m venv .venv
 
-# Activate (Windows PowerShell)
+# 3. Activate virtual environment
 .\.venv\Scripts\Activate.ps1
+# If you get an execution policy error, run this first:
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-# Install dependencies
+# 4. Install dependencies (may take 5-10 minutes)
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 
-# Download MediaPipe face landmarker model (one-time, ~4 MB)
+# 5. Download MediaPipe face landmarker model (one-time, ~4 MB)
 mkdir models
 curl -L -o models/face_landmarker.task "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+
+# 6. Launch OcuTrace
+python main.py
 ```
+
+### macOS Setup
+
+```bash
+# 1. Install Python 3.10 via Homebrew
+brew install python@3.10
+
+# 2. Clone the repo
+git clone https://github.com/barisozyurt/OcuTrace.git
+cd OcuTrace
+
+# 3. Create and activate virtual environment
+python3.10 -m venv .venv
+source .venv/bin/activate
+
+# 4. Install dependencies
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
+
+# 5. Download MediaPipe model
+mkdir -p models
+curl -L -o models/face_landmarker.task "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+
+# 6. Launch OcuTrace
+python main.py
+```
+
+> **macOS notes:** Grant camera access to Terminal/Python when prompted (System Settings → Privacy & Security → Camera). PsychoPy fullscreen may require accessibility permissions on macOS Sonoma+.
 
 ## Quick Start
 
