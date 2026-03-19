@@ -231,9 +231,10 @@ def analyze_trial(
         return None, None, None
 
     # Check minimum saccade amplitude to reject noise
+    # Use raw (unsmoothed) positions — smoothing flattens displacement
     min_amplitude = saccade_cfg.get("min_saccade_amplitude_deg", 0.0)
     amplitude = abs(
-        float(smoothed[first.offset_idx]) - float(smoothed[first.onset_idx])
+        float(pos_arr[first.offset_idx]) - float(pos_arr[first.onset_idx])
     )
     if amplitude < min_amplitude:
         logger.debug(
@@ -242,7 +243,7 @@ def analyze_trial(
         )
         return None, None, None
 
-    direction = classify_direction(smoothed, first.onset_idx, first.offset_idx)
+    direction = classify_direction(pos_arr, first.onset_idx, first.offset_idx)
     latency = compute_saccade_latency(stimulus_onset_ms, first.onset_ms)
     correct = classify_response(
         trial_spec.trial_type, trial_spec.stimulus_side, direction

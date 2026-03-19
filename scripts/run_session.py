@@ -22,9 +22,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-# Enable debug logging for saccade analysis diagnostics
+# Use WARNING level by default; pass --debug for detailed saccade diagnostics
 logging.basicConfig(level=logging.WARNING)
-logging.getLogger("src.experiment.session").setLevel(logging.DEBUG)
 
 from src.config import load_config
 from src.storage.models import Session, Trial
@@ -59,7 +58,15 @@ def main() -> None:
         default=None,
         help="Random seed for trial sequence",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging for saccade analysis",
+    )
     args = parser.parse_args()
+
+    if args.debug:
+        logging.getLogger("src.experiment.session").setLevel(logging.DEBUG)
 
     config = load_config()
     paradigm_cfg = config["paradigm"]
