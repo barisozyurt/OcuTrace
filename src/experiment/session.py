@@ -18,7 +18,11 @@ from src.tracking.iris_tracker import IrisTracker, IrisCoordinates
 from src.tracking.calibration import apply_transform
 from src.experiment.paradigm import TrialSpec
 from src.analysis.signal_processing import smooth_positions, compute_velocity
-from src.analysis.saccade_detector import detect_saccades, classify_direction
+from src.analysis.saccade_detector import (
+    detect_saccades,
+    detect_saccades_displacement,
+    classify_direction,
+)
 from src.analysis.metrics import (
     compute_saccade_latency,
     classify_response,
@@ -207,40 +211,49 @@ def analyze_trial(
     )
 
     max_vel = float(np.max(velocity)) if len(velocity) > 0 else 0.0
-    logger.debug(
-        "Trial %d: %d samples, max_velocity=%.1f deg/s, %d saccades detected",
-        trial_spec.trial_number, len(gaze_samples), max_vel, len(events),
-    )
 
-    if not events:
-        return None, None, None
-
-    # Find first valid saccade: after stimulus onset (allow 80ms anticipatory)
-    # and within the stimulus response window (max_latency_ms)
+    # --- Strategy 1: Velocity-based detection ---
     max_onset_ms = stimulus_onset_ms + max_latency_ms
     first = None
     for event in events:
         if event.onset_ms < stimulus_onset_ms - 80.0:
-            continue  # too early (before stimulus)
+            continue
         if event.onset_ms > max_onset_ms:
-            break  # too late (ITI movement, not a response)
-        first = event
-        break
+            break
+        # Check amplitude using raw positions
+        min_amplitude = saccade_cfg.get("min_saccade_amplitude_deg", 0.0)
+        amplitude = abs(
+            float(pos_arr[event.offset_idx]) - float(pos_arr[event.onset_idx])
+        )
+        if amplitude >= min_amplitude:
+            first = event
+            break
+
+    # --- Strategy 2: Displacement-based fallback ---
+    used_displacement = False
+    if first is None:
+        disp_threshold = saccade_cfg.get("min_saccade_amplitude_deg", 2.0)
+        disp_events = detect_saccades_displacement(
+            pos_arr,
+            ts_arr,
+            stimulus_onset_ms,
+            displacement_threshold=disp_threshold,
+            search_window_ms=max_latency_ms,
+        )
+        if disp_events:
+            first = disp_events[0]
+            used_displacement = True
+
+    logger.debug(
+        "Trial %d: %d samples, max_vel=%.1f deg/s, %d vel_events, "
+        "detection=%s",
+        trial_spec.trial_number, len(gaze_samples), max_vel, len(events),
+        "displacement" if used_displacement else (
+            "velocity" if first is not None else "none"
+        ),
+    )
 
     if first is None:
-        return None, None, None
-
-    # Check minimum saccade amplitude to reject noise
-    # Use raw (unsmoothed) positions — smoothing flattens displacement
-    min_amplitude = saccade_cfg.get("min_saccade_amplitude_deg", 0.0)
-    amplitude = abs(
-        float(pos_arr[first.offset_idx]) - float(pos_arr[first.onset_idx])
-    )
-    if amplitude < min_amplitude:
-        logger.debug(
-            "Trial %d: saccade amplitude %.1f deg < %.1f min, rejecting",
-            trial_spec.trial_number, amplitude, min_amplitude,
-        )
         return None, None, None
 
     direction = classify_direction(pos_arr, first.onset_idx, first.offset_idx)
@@ -283,4 +296,17 @@ def print_session_summary(metrics: SessionMetrics) -> None:
         print(
             f"Median pro latency:     {metrics.median_prosaccade_latency_ms:.1f} ms"
         )
+    # Data quality warning
+    total = metrics.n_antisaccade_trials + metrics.n_prosaccade_trials
+    detected = (
+        metrics.n_antisaccade_detected + metrics.n_prosaccade_detected
+        if hasattr(metrics, "n_antisaccade_detected") else None
+    )
+    if detected is not None and total > 0:
+        rate = detected / total
+        if rate < 0.5:
+            print(
+                f"\nWARNING: Low detection rate ({detected}/{total} = {rate:.0%})."
+                f"\n         Results may not be clinically reliable."
+            )
     print("=" * 60)

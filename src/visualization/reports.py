@@ -296,6 +296,19 @@ def generate_session_report(
     title = f"Patient: {participant_name}" if participant_name else f"Session: {session_id}"
     fig.suptitle(title, fontsize=14, fontweight="bold")
 
+    # Data quality warning
+    detected_trials = sum(
+        1 for t in trial_dicts if t["saccade_latency_ms"] is not None
+    )
+    detection_rate = detected_trials / len(trial_dicts) if trial_dicts else 0
+    if detection_rate < 0.5:
+        fig.text(
+            0.5, 0.92,
+            f"WARNING: Low detection rate ({detected_trials}/{len(trial_dicts)} "
+            f"trials = {detection_rate:.0%}). Results may not be clinically reliable.",
+            ha="center", fontsize=10, color="red", style="italic",
+        )
+
     plot_latency_by_trial(trial_dicts, ax=axes[0, 0])
     plot_latency_distribution(trial_dicts, ax=axes[0, 1])
     plot_error_rates(metrics, ax=axes[1, 0])

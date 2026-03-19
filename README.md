@@ -162,7 +162,10 @@ Webcam (30fps) → MediaPipe Iris Tracking → Calibration (pixel → degree)
    - Fixation (1000ms) → Gap/blank (200ms) → Peripheral stimulus at ±10° (1500ms) → ITI (1000–1500ms random)
    - Timing jitter < 2ms verified via built-in validation script.
 
-4. **Saccade Detection:** Savitzky-Golay smoothing (window=3, poly=2) → velocity computation (deg/s) → onset threshold (20 deg/s) → offset threshold (10 deg/s). Minimum 2° amplitude filter rejects noise.
+4. **Saccade Detection:** Dual-strategy approach optimized for webcam data:
+   - *Primary:* Velocity-threshold — Savitzky-Golay smoothing (window=3, poly=2), onset at 15 deg/s, offset at 8 deg/s, minimum 2° amplitude.
+   - *Fallback:* Displacement-based — if velocity detection fails, measures position shift from pre-stimulus baseline. Catches saccades that smoothing attenuates below velocity threshold.
+   - Reports warn when detection rate is below 50%.
 
 5. **Glasses Detection:** Automatic quality gate measures iris tracking stability. If glasses degrade tracking quality, the system warns the user before proceeding.
 
@@ -221,7 +224,7 @@ All parameters are in `config/settings.yaml`:
 | `paradigm` | `n_antisaccade_trials` | 40 | Antisaccade trial count |
 | `paradigm` | `n_prosaccade_trials` | 20 | Prosaccade trial count |
 | `paradigm` | `stimulus_eccentricity_deg` | 10.0 | Target distance from center (degrees) |
-| `saccade_detection` | `onset_velocity_threshold` | 20.0 | Saccade onset threshold (deg/s) |
+| `saccade_detection` | `onset_velocity_threshold` | 15.0 | Saccade onset threshold (deg/s) |
 | `calibration` | `max_acceptable_error_deg` | 3.0 | Max calibration error allowed |
 | `display` | `screen_width_cm` | 53.0 | Physical screen width |
 | `display` | `viewing_distance_cm` | 60.0 | Subject-to-screen distance |

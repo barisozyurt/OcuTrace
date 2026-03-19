@@ -123,6 +123,111 @@ def detect_saccades(
     return events
 
 
+def detect_saccades_displacement(
+    positions_deg: np.ndarray,
+    timestamps_ms: np.ndarray,
+    stimulus_onset_ms: float,
+    displacement_threshold: float = 2.0,
+    search_window_ms: float = 800.0,
+    baseline_window_ms: float = 100.0,
+) -> list[SaccadeEvent]:
+    """Detect saccades using position displacement from baseline.
+
+    This is a fallback detector for low-framerate webcam data where
+    velocity-based detection misses saccades due to smoothing.
+
+    It computes a baseline position from the period just before stimulus
+    onset, then scans for the first point where displacement exceeds
+    the threshold.
+
+    Parameters
+    ----------
+    positions_deg : np.ndarray
+        1-D array of eye positions in degrees.
+    timestamps_ms : np.ndarray
+        1-D array of timestamps in milliseconds.
+    stimulus_onset_ms : float
+        Timestamp of stimulus onset.
+    displacement_threshold : float
+        Minimum displacement from baseline to count as saccade (degrees).
+    search_window_ms : float
+        How long after stimulus onset to search (ms).
+    baseline_window_ms : float
+        Period before stimulus onset to compute baseline position (ms).
+
+    Returns
+    -------
+    list[SaccadeEvent]
+        At most one saccade event (the first threshold crossing).
+    """
+    n = len(positions_deg)
+    if n < 3:
+        return []
+
+    # Compute baseline: mean position in the window before stimulus onset
+    baseline_start = stimulus_onset_ms - baseline_window_ms
+    baseline_indices = [
+        i for i in range(n)
+        if baseline_start <= timestamps_ms[i] <= stimulus_onset_ms
+    ]
+    if not baseline_indices:
+        # Fall back to the last few samples before stimulus
+        pre_stim = [i for i in range(n) if timestamps_ms[i] <= stimulus_onset_ms]
+        baseline_indices = pre_stim[-3:] if len(pre_stim) >= 3 else pre_stim
+
+    if not baseline_indices:
+        return []
+
+    baseline_pos = float(np.mean(positions_deg[baseline_indices]))
+
+    # Scan for displacement exceeding threshold after stimulus onset
+    search_end = stimulus_onset_ms + search_window_ms
+    onset_idx = None
+
+    for i in range(n):
+        if timestamps_ms[i] < stimulus_onset_ms:
+            continue
+        if timestamps_ms[i] > search_end:
+            break
+
+        displacement = abs(float(positions_deg[i]) - baseline_pos)
+        if displacement >= displacement_threshold:
+            onset_idx = i
+            break
+
+    if onset_idx is None:
+        return []
+
+    # Find offset: where displacement stabilizes or reverses
+    offset_idx = onset_idx
+    peak_displacement = abs(float(positions_deg[onset_idx]) - baseline_pos)
+    for i in range(onset_idx + 1, n):
+        if timestamps_ms[i] > search_end:
+            break
+        curr_displacement = abs(float(positions_deg[i]) - baseline_pos)
+        if curr_displacement > peak_displacement:
+            peak_displacement = curr_displacement
+            offset_idx = i
+        elif curr_displacement < peak_displacement * 0.7:
+            break  # displacement started decreasing
+        else:
+            offset_idx = i
+
+    # Estimate peak velocity from the displacement
+    dt = (timestamps_ms[offset_idx] - timestamps_ms[onset_idx]) / 1000.0
+    if dt <= 0:
+        dt = 0.033  # assume 30fps
+    peak_vel = peak_displacement / dt
+
+    return [SaccadeEvent(
+        onset_idx=onset_idx,
+        offset_idx=offset_idx,
+        onset_ms=float(timestamps_ms[onset_idx]),
+        offset_ms=float(timestamps_ms[offset_idx]),
+        peak_velocity=peak_vel,
+    )]
+
+
 def classify_direction(
     positions_deg: np.ndarray,
     onset_idx: int,
