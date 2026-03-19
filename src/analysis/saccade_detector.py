@@ -123,6 +123,97 @@ def detect_saccades(
     return events
 
 
+def refine_onset_backtrack(
+    velocity: np.ndarray,
+    onset_idx: int,
+    noise_floor: float = 5.0,
+    max_backtrack_frames: int = 8,
+) -> int:
+    """Refine saccade onset by back-tracking from detected onset.
+
+    Scans backwards from onset_idx to find the true biological onset —
+    the first frame where velocity exceeds the noise floor. This corrects
+    for the delay introduced by requiring velocity to exceed a high threshold.
+
+    Parameters
+    ----------
+    velocity : np.ndarray
+        Absolute velocity array (deg/s).
+    onset_idx : int
+        Initially detected onset index.
+    noise_floor : float
+        Velocity below which eye is considered stationary (deg/s).
+    max_backtrack_frames : int
+        Maximum frames to look back from onset.
+
+    Returns
+    -------
+    int
+        Refined onset index (earlier or same as onset_idx).
+    """
+    earliest = max(0, onset_idx - max_backtrack_frames)
+    refined = onset_idx
+
+    for i in range(onset_idx - 1, earliest - 1, -1):
+        if velocity[i] < noise_floor:
+            break
+        refined = i
+
+    return refined
+
+
+def refine_displacement_onset_backtrack(
+    positions_deg: np.ndarray,
+    timestamps_ms: np.ndarray,
+    crossing_idx: int,
+    stimulus_onset_ms: float,
+    baseline_pos: float,
+    baseline_std: float,
+) -> int:
+    """Refine displacement detection onset by back-tracking.
+
+    From the threshold-crossing point, scans backwards to find where
+    the position first deviated from baseline (> 1 std above noise).
+
+    Parameters
+    ----------
+    positions_deg : np.ndarray
+        Position array in degrees.
+    timestamps_ms : np.ndarray
+        Timestamp array.
+    crossing_idx : int
+        Index where displacement first exceeded the detection threshold.
+    stimulus_onset_ms : float
+        Stimulus onset timestamp.
+    baseline_pos : float
+        Mean baseline position (from fixation period).
+    baseline_std : float
+        Standard deviation of baseline position.
+
+    Returns
+    -------
+    int
+        Refined onset index.
+    """
+    # Don't go before stimulus onset
+    earliest = 0
+    for i in range(len(timestamps_ms)):
+        if timestamps_ms[i] >= stimulus_onset_ms - 50.0:
+            earliest = i
+            break
+
+    deviation_threshold = max(baseline_std * 1.5, 0.3)  # at least 0.3 deg
+    refined = crossing_idx
+
+    for i in range(crossing_idx - 1, earliest - 1, -1):
+        deviation = abs(float(positions_deg[i]) - baseline_pos)
+        if deviation < deviation_threshold:
+            break
+        refined = i
+
+    return refined
+
+
 def detect_saccades_displacement(
     positions_deg: np.ndarray,
     timestamps_ms: np.ndarray,

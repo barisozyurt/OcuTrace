@@ -19,8 +19,11 @@ from src.tracking.calibration import apply_transform
 from src.experiment.paradigm import TrialSpec
 from src.analysis.signal_processing import smooth_positions, compute_velocity
 from src.analysis.saccade_detector import (
+    SaccadeEvent,
     detect_saccades,
     detect_saccades_displacement,
+    refine_onset_backtrack,
+    refine_displacement_onset_backtrack,
     classify_direction,
 )
 from src.analysis.metrics import (
@@ -193,12 +196,28 @@ def analyze_trial(
     pos_arr = np.array(positions_deg)
     ts_arr = np.array(timestamps_ms)
 
+    # Optional: upsample for better temporal resolution
+    if saccade_cfg.get("upsample_factor", 1) > 1:
+        from src.analysis.signal_processing import upsample_positions
+        pos_arr, ts_arr = upsample_positions(
+            pos_arr, ts_arr, factor=saccade_cfg["upsample_factor"],
+        )
+
     # Smooth and compute velocity
-    smoothed = smooth_positions(
-        pos_arr,
-        window=saccade_cfg["smoothing_window"],
-        polyorder=saccade_cfg["smoothing_polyorder"],
-    )
+    smoothing_method = saccade_cfg.get("smoothing_method", "savgol")
+    if smoothing_method == "kalman":
+        from src.analysis.signal_processing import smooth_positions_kalman
+        smoothed = smooth_positions_kalman(
+            pos_arr, ts_arr,
+            process_noise=saccade_cfg.get("kalman_process_noise", 0.1),
+            measurement_noise=saccade_cfg.get("kalman_measurement_noise", 1.0),
+        )
+    else:
+        smoothed = smooth_positions(
+            pos_arr,
+            window=saccade_cfg["smoothing_window"],
+            polyorder=saccade_cfg["smoothing_polyorder"],
+        )
     velocity = compute_velocity(smoothed, ts_arr)
 
     # Detect saccades
@@ -212,24 +231,33 @@ def analyze_trial(
 
     max_vel = float(np.max(velocity)) if len(velocity) > 0 else 0.0
 
-    # --- Strategy 1: Velocity-based detection ---
+    # --- Strategy 1: Velocity-based detection with back-tracking ---
     max_onset_ms = stimulus_onset_ms + max_latency_ms
+    min_amplitude = saccade_cfg.get("min_saccade_amplitude_deg", 0.0)
     first = None
     for event in events:
         if event.onset_ms < stimulus_onset_ms - 80.0:
             continue
         if event.onset_ms > max_onset_ms:
             break
-        # Check amplitude using raw positions
-        min_amplitude = saccade_cfg.get("min_saccade_amplitude_deg", 0.0)
         amplitude = abs(
             float(pos_arr[event.offset_idx]) - float(pos_arr[event.onset_idx])
         )
         if amplitude >= min_amplitude:
-            first = event
+            # Back-track to find true biological onset
+            refined_idx = refine_onset_backtrack(
+                velocity, event.onset_idx, noise_floor=5.0, max_backtrack_frames=8,
+            )
+            first = SaccadeEvent(
+                onset_idx=refined_idx,
+                offset_idx=event.offset_idx,
+                onset_ms=float(ts_arr[refined_idx]),
+                offset_ms=event.offset_ms,
+                peak_velocity=event.peak_velocity,
+            )
             break
 
-    # --- Strategy 2: Displacement-based fallback ---
+    # --- Strategy 2: Displacement-based fallback with back-tracking ---
     used_displacement = False
     if first is None:
         disp_threshold = saccade_cfg.get("min_saccade_amplitude_deg", 2.0)
@@ -241,7 +269,31 @@ def analyze_trial(
             search_window_ms=max_latency_ms,
         )
         if disp_events:
-            first = disp_events[0]
+            raw_event = disp_events[0]
+            # Compute baseline stats for back-tracking
+            pre_stim = [
+                i for i in range(len(ts_arr))
+                if ts_arr[i] <= stimulus_onset_ms
+            ]
+            if len(pre_stim) >= 3:
+                bl_indices = pre_stim[-min(10, len(pre_stim)):]
+                bl_pos = float(np.mean(pos_arr[bl_indices]))
+                bl_std = float(np.std(pos_arr[bl_indices]))
+            else:
+                bl_pos = float(pos_arr[0])
+                bl_std = 0.5
+
+            refined_idx = refine_displacement_onset_backtrack(
+                pos_arr, ts_arr, raw_event.onset_idx,
+                stimulus_onset_ms, bl_pos, bl_std,
+            )
+            first = SaccadeEvent(
+                onset_idx=refined_idx,
+                offset_idx=raw_event.offset_idx,
+                onset_ms=float(ts_arr[refined_idx]),
+                offset_ms=raw_event.offset_ms,
+                peak_velocity=raw_event.peak_velocity,
+            )
             used_displacement = True
 
     logger.debug(

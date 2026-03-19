@@ -44,7 +44,14 @@ saccade_detection:
   onset_velocity_threshold: 15.0
   offset_velocity_threshold: 8.0
   min_onset_frames: 1  # 1 frame sufficient at 30fps with amplitude check
-  min_saccade_amplitude_deg: 2.0  # reject noise-triggered detections < 2 deg
+  min_saccade_amplitude_deg: 1.5  # reject noise-triggered detections < 1.5 deg
+  # Smoothing method: "savgol" (Savitzky-Golay) or "kalman" (adaptive)
+  # Kalman better preserves saccade edges at low frame rates
+  smoothing_method: kalman
+  kalman_process_noise: 0.1
+  kalman_measurement_noise: 1.0
+  # Upsample factor: 1 = no upsampling, 3 = triple via cubic spline
+  upsample_factor: 3
   # Displacement fallback: if velocity detection fails, use position shift
   # from pre-stimulus baseline to detect saccades (better for low-fps webcam)
   max_latency_ms: 1500.0  # max time after stimulus to search for saccade
